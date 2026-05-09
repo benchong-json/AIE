@@ -1,0 +1,155 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Candidate {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profiles      CandidateProfile[]
+  opportunities Opportunity[]
+  cases         ApplicationCase[]
+}
+
+model CandidateProfile {
+  id                  String   @id @default(cuid())
+  candidateId         String
+  title               String
+  currentRole         String?
+  location            String?
+  targetRoles         String
+  constraints         String?
+  careerNarrative     String?
+  evidenceBank        String?
+  voiceProfile        String?
+  overclaimBoundaries String?
+  rawMarkdown         String?
+  isActive            Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+}
+
+model Opportunity {
+  id             String   @id @default(cuid())
+  candidateId    String?
+  company        String
+  roleTitle      String
+  location       String?
+  workModel      String?
+  sourceUrl      String?
+  sourceType     String?
+  jobDescription String
+  status         String   @default("new")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  candidate Candidate?        @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+  cases     ApplicationCase[]
+}
+
+model ApplicationCase {
+  id            String    @id @default(cuid())
+  candidateId   String
+  opportunityId String
+  title         String
+  status        String    @default("discovered")
+  thesis        String?
+  notes         String?
+  nextAction    String?
+  followUpAt    DateTime?
+  outcome       String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  candidate   Candidate   @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  artifacts   Artifact[]
+  agentRuns   AgentRun[]
+  learnings   CaseLearning[]
+  research    ResearchSource[]
+  timeline    CaseTimelineEvent[]
+}
+
+model CaseTimelineEvent {
+  id          String   @id @default(cuid())
+  caseId      String
+  type        String
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+
+  case ApplicationCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model Artifact {
+  id        String   @id @default(cuid())
+  caseId    String
+  type      String
+  title     String
+  content   String
+  status    String   @default("draft")
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  case ApplicationCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model AgentRun {
+  id        String   @id @default(cuid())
+  caseId    String?
+  runType   String
+  status    String   @default("queued")
+  input     String?
+  output    String?
+  error     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  case ApplicationCase? @relation(fields: [caseId], references: [id], onDelete: SetNull)
+}
+
+model CaseLearning {
+  id        String   @id @default(cuid())
+  caseId    String
+  summary   String
+  lessons   String?
+  status    String   @default("draft")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  case ApplicationCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model ResearchSource {
+  id          String   @id @default(cuid())
+  caseId      String
+  category    String
+  url         String
+  title       String?
+  snippet     String?
+  publishedAt DateTime?
+  retrievedAt DateTime @default(now())
+  content     String?
+
+  case ApplicationCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@index([category])
+  @@unique([caseId, url])
+}
